@@ -98,7 +98,7 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Productos'),
+      title: const Text('Admin. Productos'),
       actions: [
         ListenableBuilder(
           listenable: widget.themeProvider,

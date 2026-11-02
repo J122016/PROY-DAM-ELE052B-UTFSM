@@ -55,6 +55,7 @@ lib/
 ```sh
 flutter analyze # Chequeo estático
 flutter test    # Ejecutar pruebas
+flutter build apk --split-per-abi # generar apk
 ```
 
 ## Notas API

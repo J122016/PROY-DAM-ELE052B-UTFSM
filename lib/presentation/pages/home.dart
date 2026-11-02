@@ -69,40 +69,17 @@ class _HomeState extends State<Home> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Administración de productos',
+                  'Nutrimarket',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Consulta el catálogo y gestiona el inventario local.',
+                  'Tienda integral que provee información nutricional y de sostenibilidad de sus productos disponibles',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                const SizedBox(height: 28),
-                ListenableBuilder(
-                  listenable: widget.productProvider,
-                  builder: (context, child) => Text(
-                    widget.productProvider.isLoading
-                        ? 'Cargando catálogo...'
-                        : '${widget.productProvider.products.length} productos en el catálogo',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
                 const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (context) => AdminProductsPage(
-                        productProvider: widget.productProvider,
-                        themeProvider: widget.themeProvider,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: const Text('Administrar productos'),
-                ),
               ],
             ),
           ),
