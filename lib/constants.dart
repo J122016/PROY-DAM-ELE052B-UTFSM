@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 
-// Brand & Layout Colors
-const kPrimaryColor = Color(0xFF00A86B);
-const kSecondaryColor = Color(0xFFFFC043);
-const kAccentColor = Color(0xFF2E7D32);
-const kTextColor = Color(0xFF1C2D35);
-const kMutedTextColor = Color(0xFF758A99);
+const kBrandColor = Color(0xFF087F5B);
+const kAccentColor = Color(0xFFE6A817);
+const kLightBackground = Color(0xFFF6F8F5);
+const kLightSurface = Color(0xFFFFFFFF);
+const kLightText = Color(0xFF18231F);
+const kLightMutedText = Color(0xFF66736D);
+const kLightBorder = Color(0xFFDCE4DE);
+const kDarkBackground = Color(0xFF151C19);
+const kDarkSurface = Color(0xFF202A25);
+const kDarkText = Color(0xFFE8F0EA);
+const kDarkMutedText = Color(0xFFADB9B1);
+const kDarkBorder = Color(0xFF39463F);
+const kErrorColor = Color(0xFFB3261E);
 
-// Backgrounds & Containers
-const kBackgroundColor = Color(0xFFFFFFFF);     
-const kSurfaceColor = Color(0xFFF4F7F6);
-const kCardBackgroundColor = Color(0xFFFFFFFF);
-const kBorderColor = Color(0xFFE2E8F0);
-
-// Specialized App States
-const kBoldTextBadgeColor = Color(0xFF111111);
-const kLightTextColor = Color(0xFFFFD54F);
-
-const kFontFamily = 'Montserrat';
+const kdisabledContainer = Color(0xFFE1E1E1);
+const kdisabledText = Color(0xFF757575);
