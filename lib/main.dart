@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_dam/constants.dart';
-import 'package:proyecto_dam/presentation/pages/home.dart';
-import 'package:proyecto_dam/presentation/providers/product_provider.dart';
-import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
+import 'package:proyecto_dam/data/repositories/cart_repository.dart';
 import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
+import 'package:proyecto_dam/presentation/pages/home.dart';
+import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
+import 'package:proyecto_dam/presentation/providers/product_provider.dart';
+import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-  
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferences = await SharedPreferences.getInstance();
@@ -25,6 +27,7 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   late final ThemeProvider _themeProvider;
   late final ProductProvider _productProvider;
+  late final CartProvider _cartProvider;
 
   @override
   void initState() {
@@ -34,12 +37,14 @@ class _MainAppState extends State<MainApp> {
       repository: ProductRepository(widget.preferences),
       service: OpenFoodFactsService(),
     );
+    _cartProvider = CartProvider(CartRepository(widget.preferences));
   }
 
   @override
   void dispose() {
     _themeProvider.dispose();
     _productProvider.dispose();
+    _cartProvider.dispose();
     super.dispose();
   }
 
@@ -55,6 +60,7 @@ class _MainAppState extends State<MainApp> {
       home: Home(
         productProvider: _productProvider,
         themeProvider: _themeProvider,
+        cartProvider: _cartProvider,
       ),
     ),
   );
