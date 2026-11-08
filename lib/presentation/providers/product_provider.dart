@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:proyecto_dam/data/models/product.dart';
+import 'package:proyecto_dam/data/repositories/local_catalog.dart';
 import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 
@@ -13,6 +14,7 @@ class ProductProvider extends ChangeNotifier {
   bool isLoading = true;
   bool isRefreshing = false;
   bool isLocalCatalog = false;
+  bool isBackupCatalog = false;
   String? errorMessage;
 
   List<Product> get products => List.unmodifiable(_products);
@@ -31,6 +33,13 @@ class ProductProvider extends ChangeNotifier {
       isLocalCatalog = false;
     } catch (error) {
       errorMessage = error.toString();
+      // Sin catálogo guardado y sin API se muestra el de respaldo, sin guardarlo,
+      // para que la próxima apertura vuelva a consultar Open Food Facts.
+      if (_products.isEmpty) {
+        _products = List.of(localCatalog);
+        isLocalCatalog = true;
+        isBackupCatalog = true;
+      }
     } finally {
       isLoading = false;
       notifyListeners();
@@ -89,22 +98,13 @@ class ProductProvider extends ChangeNotifier {
     if (priceClp < 0 || stock < 0) {
       throw ArgumentError('Price and stock must be non-negative.');
     }
-    final updated = _products.map((product) {
-      if (product.id != id) return product;
-      return Product(
-        id: product.id,
-        name: product.name,
-        priceClp: priceClp,
-        stock: stock,
-        imageUrl: product.imageUrl,
-        description: product.description,
-        calories: product.calories,
-        proteins: product.proteins,
-        carbohydrates: product.carbohydrates,
-        brand: product.brand,
-        category: product.category,
-      );
-    }).toList();
+    final updated = _products
+        .map(
+          (product) => product.id == id
+              ? product.copyWith(priceClp: priceClp, stock: stock)
+              : product,
+        )
+        .toList();
     await _repository.save(updated, _deletedIds);
     _products = updated;
     isLocalCatalog = true;
@@ -139,17 +139,6 @@ class ProductProvider extends ChangeNotifier {
 
   static String _normalize(String value) => value.trim().toLowerCase();
 
-  static Product _copy(Product product, {required int stock}) => Product(
-    id: product.id,
-    name: product.name,
-    priceClp: product.priceClp,
-    stock: stock,
-    imageUrl: product.imageUrl,
-    description: product.description,
-    calories: product.calories,
-    proteins: product.proteins,
-    carbohydrates: product.carbohydrates,
-    brand: product.brand,
-    category: product.category,
-  );
+  static Product _copy(Product product, {required int stock}) =>
+      product.copyWith(stock: stock);
 }
