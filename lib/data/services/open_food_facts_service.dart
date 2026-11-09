@@ -21,7 +21,11 @@ class OpenFoodFactsService {
   final http.Client _client;
 
   static const _fields =
-      'code,product_name,generic_name,image_front_url,nutriments,brands,categories';
+      'code,product_name,product_name_es,generic_name,image_front_url,nutriments,'
+      'brands,categories,categories_tags,pnns_groups_1,nutriscore_grade,'
+      'nova_group,nutrient_levels,labels_tags,ingredients_analysis_tags,'
+      'allergens_tags,ingredients_text,ingredients_text_es,quantity,'
+      'serving_size,serving_quantity';
   static const _headers = {
     'Accept': 'application/json',
     'User-Agent': 'NutriMarket/0.1 (nutrimarket@usm.cl)',
