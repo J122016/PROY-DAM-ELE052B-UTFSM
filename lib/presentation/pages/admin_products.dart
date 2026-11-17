@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_dam/data/models/product.dart';
+import 'package:proyecto_dam/data/services/auth_service.dart';
 import 'package:proyecto_dam/presentation/pages/add_product.dart';
 import 'package:proyecto_dam/presentation/components/empty_results.dart';
 import 'package:proyecto_dam/presentation/components/product_details_dialog.dart';
@@ -66,6 +67,15 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     }
   }
 
+  Future<void> _signOut() async {
+    try {
+      await const AuthService().signOut();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      _showMessage('No se pudo cerrar sesión: $error');
+    }
+  }
+
   // Modal to edit stock and price of product
   Future<void> _edit(Product product) async {
     final values = await showDialog<(int, int)>(
@@ -123,15 +133,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
           ),
         ),
         IconButton(
-          tooltip: 'Agregar producto',
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (context) =>
-                  AddProductPage(productProvider: widget.productProvider),
-            ),
-          ),
-          icon: const Icon(Icons.add),
+          tooltip: 'Cerrar sesión',
+          onPressed: _signOut,
+          icon: const Icon(Icons.logout),
         ),
       ],
     ),
@@ -153,31 +157,6 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
 
           return Column(
             children: [
-              Container(
-                width: double.infinity,
-                color: Theme.of(context).colorScheme.secondary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSecondary,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      'Panel Admin: Modificación de Stock',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: Row(
