@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1038460412878",
+    "project_id": "nutrimarket-dam",
+    "storage_bucket": "nutrimarket-dam.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1038460412878:android:471085ebc7d1755f81419f",
+        "android_client_info": {
+          "package_name": "com.example.proyecto_dam"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKbJsNpMUMPvPQM0jIDH38xzHFhmfXKRY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,6 +9,7 @@ Mockup: https://usmarketrganico.ai.studio/
 - Flutter
 - Dart
 - Idealmente emulador android
+- Proyecto en firebase configurado para autenticación y firestore
 
 ## Cómo inicializar el proyecto
 
