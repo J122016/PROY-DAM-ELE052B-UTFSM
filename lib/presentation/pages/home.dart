@@ -8,8 +8,10 @@ import 'package:proyecto_dam/presentation/components/product_filters_sheet.dart'
 import 'package:proyecto_dam/presentation/components/theme_toggle_button.dart';
 import 'package:proyecto_dam/presentation/pages/admin_products.dart';
 import 'package:proyecto_dam/presentation/pages/cart_page.dart';
+import 'package:proyecto_dam/presentation/pages/order_history_page.dart';
 import 'package:proyecto_dam/presentation/pages/product_detail_page.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
+import 'package:proyecto_dam/presentation/providers/order_history_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_filter.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
@@ -19,6 +21,7 @@ class Home extends StatefulWidget {
     required this.productProvider,
     required this.themeProvider,
     required this.cartProvider,
+    this.orderHistoryProvider,
     this.authService = const AuthService(),
     super.key,
   });
@@ -26,6 +29,7 @@ class Home extends StatefulWidget {
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
   final CartProvider cartProvider;
+  final OrderHistoryProvider? orderHistoryProvider;
   final AuthService authService;
 
   @override
@@ -55,9 +59,24 @@ class _HomeState extends State<Home> {
         cartProvider: widget.cartProvider,
         productProvider: widget.productProvider,
         themeProvider: widget.themeProvider,
+        orderHistoryProvider: widget.orderHistoryProvider,
       ),
     ),
   );
+
+  void _openOrderHistory(BuildContext context) {
+    final historyProvider = widget.orderHistoryProvider;
+    if (historyProvider == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => OrderHistoryPage(
+          orderHistoryProvider: historyProvider,
+          themeProvider: widget.themeProvider,
+        ),
+      ),
+    );
+  }
 
   void _openDetail(BuildContext context, Product product) => Navigator.push(
     context,
@@ -112,6 +131,7 @@ class _HomeState extends State<Home> {
         builder: (context) => AdminProductsPage(
           productProvider: widget.productProvider,
           themeProvider: widget.themeProvider,
+          orderStore: widget.orderHistoryProvider?.store,
         ),
       ),
     );
@@ -129,6 +149,22 @@ class _HomeState extends State<Home> {
             onPressed: widget.themeProvider.toggle,
           ),
         ),
+        if (widget.orderHistoryProvider != null)
+          ListenableBuilder(
+            listenable: widget.orderHistoryProvider!,
+            builder: (context, child) {
+              final pending = widget.orderHistoryProvider!.pendingCount;
+              return IconButton(
+                tooltip: 'Mis Pedidos',
+                onPressed: () => _openOrderHistory(context),
+                icon: Badge(
+                  isLabelVisible: pending > 0,
+                  label: Text('$pending'),
+                  child: const Icon(Icons.receipt_long_outlined),
+                ),
+              );
+            },
+          ),
         ListenableBuilder(
           listenable: widget.cartProvider,
           builder: (context, child) {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_dam/data/models/product.dart';
 import 'package:proyecto_dam/data/services/auth_service.dart';
+import 'package:proyecto_dam/data/services/order_service.dart';
 import 'package:proyecto_dam/presentation/pages/add_product.dart';
+import 'package:proyecto_dam/presentation/pages/admin_orders_page.dart';
 import 'package:proyecto_dam/presentation/components/empty_results.dart';
 import 'package:proyecto_dam/presentation/components/product_details_dialog.dart';
 import 'package:proyecto_dam/presentation/components/product_card_admin.dart';
@@ -15,11 +17,13 @@ class AdminProductsPage extends StatefulWidget {
   const AdminProductsPage({
     required this.productProvider,
     required this.themeProvider,
+    this.orderStore,
     super.key,
   });
 
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
+  final OrderStore? orderStore;
 
   @override
   State<AdminProductsPage> createState() => _AdminProductsPageState();
@@ -132,6 +136,19 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
             isDark: widget.themeProvider.isDarkMode,
             onPressed: widget.themeProvider.toggle,
           ),
+        ),
+        IconButton(
+          tooltip: 'Pedidos del campus',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (context) => AdminOrdersPage(
+                orderStore: widget.orderStore ?? FirestoreOrderStore(),
+                themeProvider: widget.themeProvider,
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.receipt_long_outlined),
         ),
         ListenableBuilder(
           listenable: widget.productProvider,
