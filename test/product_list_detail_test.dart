@@ -7,7 +7,6 @@ import 'package:http/testing.dart';
 import 'package:proyecto_dam/data/models/product.dart';
 import 'package:proyecto_dam/data/repositories/cart_repository.dart';
 import 'package:proyecto_dam/data/repositories/local_catalog.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 import 'package:proyecto_dam/presentation/pages/home.dart';
 import 'package:proyecto_dam/presentation/pages/product_detail_page.dart';
@@ -17,6 +16,8 @@ import 'package:proyecto_dam/presentation/providers/product_filter.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/in_memory_product_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -167,7 +168,7 @@ void main() {
   ) async {
     final setup = await _setup(tester);
 
-    expect(find.text('Quinoa Real Orgánica de los Andes'), findsOneWidget);
+    expect(find.text('Aceite de Oliva Virgen Extra Ecológico'), findsOneWidget);
     await tester.tap(find.byTooltip('Agregar a la canasta').first);
     await tester.pumpAndSettle();
     expect(setup.cart.totalItemsCount, 1);
@@ -247,7 +248,7 @@ Future<({CartProvider cart, ThemeProvider theme})> _setup(
     client: MockClient((_) async => http.Response(jsonEncode({}), 503)),
   );
   final products = ProductProvider(
-    repository: ProductRepository(preferences),
+    store: InMemoryProductStore(localCatalog),
     service: service,
   );
   final cart = CartProvider(CartRepository(preferences));

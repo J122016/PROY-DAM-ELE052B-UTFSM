@@ -107,7 +107,7 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     );
     if (values == null) return;
     try {
-      await widget.productProvider.updateLocalDetails(
+      await widget.productProvider.updateDetails(
         product.id,
         priceClp: values.$1,
         stock: values.$2,
@@ -272,7 +272,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    provider.isLocalCatalog ? 'Catálogo local' : 'Datos iniciales de Open Food Facts · valores comerciales por configurar',
+                    provider.isBackupCatalog
+                        ? 'Sin conexión con Firebase: catálogo de respaldo, los cambios no se guardan'
+                        : 'Catálogo de la tienda en Firebase, compartido con todos los clientes',
                   ),
                 ),
               ),

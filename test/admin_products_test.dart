@@ -10,9 +10,10 @@ import 'package:proyecto_dam/presentation/pages/admin_products.dart';
 import 'package:proyecto_dam/presentation/components/product_details_dialog.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/in_memory_product_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -78,7 +79,9 @@ void main() {
       ),
     );
     final provider = ProductProvider(
-      repository: ProductRepository(preferences),
+      store: InMemoryProductStore([
+        Product.fromOpenFoodFacts({'code': '123', 'product_name': 'Avena'})!,
+      ]),
       service: service,
     );
     final themeProvider = ThemeProvider(preferences);
@@ -123,8 +126,6 @@ void main() {
   testWidgets(
     'Open Food Facts import requires local price and saves the product',
     (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
       final service = OpenFoodFactsService(
         client: MockClient((request) async {
           final products = request.url.path.endsWith('search.pl')
@@ -140,7 +141,7 @@ void main() {
         }),
       );
       final provider = ProductProvider(
-        repository: ProductRepository(preferences),
+        store: InMemoryProductStore(),
         service: service,
       );
       await provider.initialize();

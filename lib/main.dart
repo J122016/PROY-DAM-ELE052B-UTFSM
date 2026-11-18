@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:proyecto_dam/constants.dart';
+import 'package:proyecto_dam/firebase_web_options.dart';
 import 'package:proyecto_dam/data/repositories/cart_repository.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
+import 'package:proyecto_dam/data/services/product_service.dart';
 import 'package:proyecto_dam/presentation/pages/home.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
@@ -12,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: kIsWeb ? webFirebaseOptions : null);
   final preferences = await SharedPreferences.getInstance();
   runApp(MainApp(preferences: preferences));
 }
@@ -36,7 +38,7 @@ class _MainAppState extends State<MainApp> {
     super.initState();
     _themeProvider = ThemeProvider(widget.preferences);
     _productProvider = ProductProvider(
-      repository: ProductRepository(widget.preferences),
+      store: FirestoreProductStore(),
       service: OpenFoodFactsService(),
     );
     _cartProvider = CartProvider(CartRepository(widget.preferences));
