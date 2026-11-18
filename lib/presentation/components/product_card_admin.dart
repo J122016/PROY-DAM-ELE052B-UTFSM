@@ -22,7 +22,7 @@ class ProductCardAdmin extends StatelessWidget {
     final colors = theme.colorScheme;
     final textStyle = theme.textTheme.labelLarge;
 
-    final warningStock = 5;
+    final warningStock = Product.criticalStockThreshold;
     final outOfStock = 0;
 
     return Card(
@@ -78,18 +78,24 @@ class ProductCardAdmin extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: product.stock > warningStock ? colors.primaryContainer
-                        : product.stock > outOfStock ? kAccentColor
+                    color: product.stock > warningStock
+                        ? colors.primaryContainer
+                        : product.stock > outOfStock
+                        ? kAccentColor
                         : kdisabledContainer,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    product.stock > warningStock ? 'DISPONIBLE'
-                    : product.stock > outOfStock ? 'CRITICO'
-                    : 'SIN STOCK',
+                    product.stock > warningStock
+                        ? 'DISPONIBLE'
+                        : product.stock > outOfStock
+                        ? 'CRITICO'
+                        : 'SIN STOCK',
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: product.stock > warningStock ? colors.onPrimaryContainer
-                          : product.stock > outOfStock ? Colors.white 
+                      color: product.stock > warningStock
+                          ? colors.onPrimaryContainer
+                          : product.stock > outOfStock
+                          ? Colors.white
                           : kdisabledText,
                       fontWeight: FontWeight.w800,
                     ),

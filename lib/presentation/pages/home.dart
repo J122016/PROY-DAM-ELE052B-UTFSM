@@ -289,10 +289,20 @@ class _ActiveFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = <Widget>[
+      if (filter.category != null)
+        _chip(
+          filter.category!,
+          () => onChanged(filter.copyWith(category: () => null)),
+        ),
       if (filter.sort != ProductSort.relevance)
         _chip(
           filter.sort.label,
           () => onChanged(filter.copyWith(sort: ProductSort.relevance)),
+        ),
+      if (filter.stock != ProductStockFilter.any)
+        _chip(
+          filter.stock.label,
+          () => onChanged(filter.copyWith(stock: ProductStockFilter.any)),
         ),
       for (final grade in filter.nutriScores)
         _chip(
