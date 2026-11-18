@@ -28,7 +28,7 @@ class OpenFoodFactsService {
       'serving_size,serving_quantity';
   static const _headers = {
     'Accept': 'application/json',
-    'User-Agent': 'NutriMarket/0.1 (nutrimarket@usm.cl)',
+    'User-Agent': 'NutriMarket-test/0.1 (nutrimarket-test@usm.cl)',
   };
 
   DateTime? _blockedUntil;

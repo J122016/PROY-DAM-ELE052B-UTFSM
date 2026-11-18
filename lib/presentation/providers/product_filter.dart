@@ -12,6 +12,17 @@ enum ProductSort {
   final String label;
 }
 
+enum ProductStockFilter {
+  any('Cualquier stock'),
+  outOfStock('Sin stock'),
+  available('Disponible'),
+  critical('Crítico');
+
+  const ProductStockFilter(this.label);
+
+  final String label;
+}
+
 const productLabelNames = {
   'vegan': 'Vegano',
   'vegetarian': 'Vegetariano',
@@ -25,6 +36,7 @@ class ProductFilter {
   const ProductFilter({
     this.query = '',
     this.category,
+    this.stock = ProductStockFilter.any,
     this.labels = const {},
     this.nutriScores = const {},
     this.withoutHighNutrients = false,
@@ -34,6 +46,7 @@ class ProductFilter {
 
   final String query;
   final String? category;
+  final ProductStockFilter stock;
   final Set<String> labels;
   final Set<String> nutriScores;
   final bool withoutHighNutrients;
@@ -41,8 +54,10 @@ class ProductFilter {
   final ProductSort sort;
 
   int get activeCount =>
+      (category != null ? 1 : 0) +
       labels.length +
       nutriScores.length +
+      (stock != ProductStockFilter.any ? 1 : 0) +
       (withoutHighNutrients ? 1 : 0) +
       (maxPrice != null ? 1 : 0) +
       (sort != ProductSort.relevance ? 1 : 0);
@@ -50,6 +65,7 @@ class ProductFilter {
   ProductFilter copyWith({
     String? query,
     String? Function()? category,
+    ProductStockFilter? stock,
     Set<String>? labels,
     Set<String>? nutriScores,
     bool? withoutHighNutrients,
@@ -58,6 +74,7 @@ class ProductFilter {
   }) => ProductFilter(
     query: query ?? this.query,
     category: category != null ? category() : this.category,
+    stock: stock ?? this.stock,
     labels: labels ?? this.labels,
     nutriScores: nutriScores ?? this.nutriScores,
     withoutHighNutrients: withoutHighNutrients ?? this.withoutHighNutrients,
@@ -65,8 +82,8 @@ class ProductFilter {
     sort: sort ?? this.sort,
   );
 
-  /// Quita los filtros de la hoja, pero conserva la búsqueda y la categoría.
-  ProductFilter cleared() => ProductFilter(query: query, category: category);
+  /// Quita los filtros y conserva la búsqueda actual.
+  ProductFilter cleared() => ProductFilter(query: query);
 
   List<Product> apply(List<Product> products) {
     final text = query.trim().toLowerCase();
@@ -77,6 +94,12 @@ class ProductFilter {
           (product.brand ?? '').toLowerCase().contains(text);
       final matchesCategory =
           category == null || (product.category ?? 'Otros') == category;
+      final matchesStock = switch (stock) {
+        ProductStockFilter.any => true,
+        ProductStockFilter.outOfStock => product.stock == 0,
+        ProductStockFilter.available => product.stock > 0,
+        ProductStockFilter.critical => product.isCriticallyStocked,
+      };
       final matchesLabels = labels.every(product.labels.contains);
       final matchesScore =
           nutriScores.isEmpty || nutriScores.contains(product.nutriScore);
@@ -86,6 +109,7 @@ class ProductFilter {
           (product.priceClp > 0 && product.priceClp <= maxPrice!);
       return matchesText &&
           matchesCategory &&
+          matchesStock &&
           matchesLabels &&
           matchesScore &&
           matchesLevels &&

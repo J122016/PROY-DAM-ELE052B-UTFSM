@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_dam/data/models/product.dart';
+import 'package:proyecto_dam/data/services/auth_service.dart';
+import 'package:proyecto_dam/presentation/components/admin_login_dialog.dart';
 import 'package:proyecto_dam/presentation/components/empty_results.dart';
 import 'package:proyecto_dam/presentation/components/product_card.dart';
 import 'package:proyecto_dam/presentation/components/product_filters_sheet.dart';
@@ -17,12 +19,14 @@ class Home extends StatefulWidget {
     required this.productProvider,
     required this.themeProvider,
     required this.cartProvider,
+    this.authService = const AuthService(),
     super.key,
   });
 
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
   final CartProvider cartProvider;
+  final AuthService authService;
 
   @override
   State<Home> createState() => _HomeState();
@@ -90,6 +94,29 @@ class _HomeState extends State<Home> {
     if (selected != null) setState(() => _filter = selected);
   }
 
+  Future<void> _openAdmin(BuildContext context) async {
+    if (widget.authService.currentUser == null) {
+      final authenticated = await showDialog<bool>(
+        context: context,
+        builder: (context) => AdminLoginDialog(
+          onSignIn: (email, password) =>
+              widget.authService.signIn(email: email, password: password),
+        ),
+      );
+      if (authenticated != true || !context.mounted) return;
+    }
+    if (!context.mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (context) => AdminProductsPage(
+          productProvider: widget.productProvider,
+          themeProvider: widget.themeProvider,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -118,15 +145,7 @@ class _HomeState extends State<Home> {
           },
         ),
         IconButton(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (context) => AdminProductsPage(
-                productProvider: widget.productProvider,
-                themeProvider: widget.themeProvider,
-              ),
-            ),
-          ),
+          onPressed: () => _openAdmin(context),
           icon: const Icon(Icons.storefront_outlined),
           tooltip: 'Admin',
         ),
@@ -143,8 +162,7 @@ class _HomeState extends State<Home> {
           final products = provider.products;
           final categories = ProductFilter.categoriesOf(products);
           final filter =
-              _filter.category != null &&
-                  !categories.contains(_filter.category)
+              _filter.category != null && !categories.contains(_filter.category)
               ? _filter.copyWith(category: () => null)
               : _filter;
           final visible = filter.apply(products);
@@ -217,9 +235,8 @@ class _HomeState extends State<Home> {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                   child: Text(
                     'Open Food Facts no responde. Se muestra el catálogo de respaldo.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
               Expanded(
@@ -272,16 +289,28 @@ class _ActiveFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chips = <Widget>[
+      if (filter.category != null)
+        _chip(
+          filter.category!,
+          () => onChanged(filter.copyWith(category: () => null)),
+        ),
       if (filter.sort != ProductSort.relevance)
         _chip(
           filter.sort.label,
           () => onChanged(filter.copyWith(sort: ProductSort.relevance)),
         ),
+      if (filter.stock != ProductStockFilter.any)
+        _chip(
+          filter.stock.label,
+          () => onChanged(filter.copyWith(stock: ProductStockFilter.any)),
+        ),
       for (final grade in filter.nutriScores)
         _chip(
           'Nutri-Score ${grade.toUpperCase()}',
           () => onChanged(
-            filter.copyWith(nutriScores: {...filter.nutriScores}..remove(grade)),
+            filter.copyWith(
+              nutriScores: {...filter.nutriScores}..remove(grade),
+            ),
           ),
         ),
       for (final label in filter.labels)
