@@ -6,13 +6,14 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:proyecto_dam/data/models/product.dart';
 import 'package:proyecto_dam/data/repositories/cart_repository.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 import 'package:proyecto_dam/presentation/pages/cart_page.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/in_memory_product_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -58,7 +59,7 @@ void main() {
       ),
     );
     final productProvider = ProductProvider(
-      repository: ProductRepository(preferences),
+      store: InMemoryProductStore(),
       service: service,
     );
     final cartProvider = CartProvider(CartRepository(preferences));

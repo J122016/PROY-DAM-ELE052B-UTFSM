@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Reglas de Firestore de NutriMarket. Se publican desde la consola de Firebase
+// (Firestore Database > Reglas). Solo el administrador inicia sesión en la app,
+// por eso "request.auth != null" equivale a "es admin".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Un cliente solo puede bajar el stock al comprar: no puede subirlo,
+    // dejarlo negativo ni tocar otro campo.
+    function isPurchase() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['stock', 'updatedAt'])
+        && request.resource.data.stock is int
+        && request.resource.data.stock >= 0
+        && request.resource.data.stock < resource.data.stock;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isPurchase();
+    }
+
+    // Pedidos: el cliente crea el suyo y lo consulta por su número;
+    // el admin ve todos y cambia su estado.
+    match /orders/{orderNumber} {
+      allow create: if true;
+      allow get: if true;
+      allow list, update, delete: if isAdmin();
+    }
+  }
+}
