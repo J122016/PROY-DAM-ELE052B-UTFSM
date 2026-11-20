@@ -273,8 +273,8 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     provider.isBackupCatalog
-                        ? 'Sin conexión con Firebase: catálogo de respaldo, los cambios no se guardan'
-                        : 'Catálogo de la tienda en Firebase, compartido con todos los clientes',
+                        ? 'Sin conexión con base de datos: catálogo de respaldo, los cambios no se guardan'
+                        : 'Catálogo de la tienda compartido con todos los clientes',
                   ),
                 ),
               ),
