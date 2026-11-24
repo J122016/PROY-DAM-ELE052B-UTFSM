@@ -4,10 +4,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:proyecto_dam/constants.dart';
 import 'package:proyecto_dam/firebase_web_options.dart';
 import 'package:proyecto_dam/data/repositories/cart_repository.dart';
+import 'package:proyecto_dam/data/repositories/order_history_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
+import 'package:proyecto_dam/data/services/order_service.dart';
 import 'package:proyecto_dam/data/services/product_service.dart';
 import 'package:proyecto_dam/presentation/pages/home.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
+import 'package:proyecto_dam/presentation/providers/order_history_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +35,7 @@ class _MainAppState extends State<MainApp> {
   late final ThemeProvider _themeProvider;
   late final ProductProvider _productProvider;
   late final CartProvider _cartProvider;
+  late final OrderHistoryProvider _orderHistoryProvider;
 
   @override
   void initState() {
@@ -42,6 +46,10 @@ class _MainAppState extends State<MainApp> {
       service: OpenFoodFactsService(),
     );
     _cartProvider = CartProvider(CartRepository(widget.preferences));
+    _orderHistoryProvider = OrderHistoryProvider(
+      repository: OrderHistoryRepository(widget.preferences),
+      store: FirestoreOrderStore(),
+    );
   }
 
   @override
@@ -49,6 +57,7 @@ class _MainAppState extends State<MainApp> {
     _themeProvider.dispose();
     _productProvider.dispose();
     _cartProvider.dispose();
+    _orderHistoryProvider.dispose();
     super.dispose();
   }
 
@@ -65,6 +74,7 @@ class _MainAppState extends State<MainApp> {
         productProvider: _productProvider,
         themeProvider: _themeProvider,
         cartProvider: _cartProvider,
+        orderHistoryProvider: _orderHistoryProvider,
       ),
     ),
   );

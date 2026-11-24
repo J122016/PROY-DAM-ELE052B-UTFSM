@@ -4,6 +4,7 @@ import 'package:proyecto_dam/presentation/components/nutrition_summary_card.dart
 import 'package:proyecto_dam/presentation/components/theme_toggle_button.dart';
 import 'package:proyecto_dam/presentation/pages/checkout_page.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
+import 'package:proyecto_dam/presentation/providers/order_history_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 
@@ -12,12 +13,14 @@ class CartPage extends StatelessWidget {
     required this.cartProvider,
     required this.productProvider,
     required this.themeProvider,
+    this.orderHistoryProvider,
     super.key,
   });
 
   final CartProvider cartProvider;
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
+  final OrderHistoryProvider? orderHistoryProvider;
 
   Future<void> _confirmClearCart(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -163,6 +166,7 @@ class CartPage extends StatelessWidget {
                                     cartProvider: cartProvider,
                                     productProvider: productProvider,
                                     themeProvider: themeProvider,
+                                    orderHistoryProvider: orderHistoryProvider,
                                   ),
                                 ),
                               ),
