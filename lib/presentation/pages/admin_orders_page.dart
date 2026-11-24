@@ -98,7 +98,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                    'No fue posible cargar los pedidos desde Firebase: ${snapshot.error}',
+                    'No fue posible cargar los pedidos: ${snapshot.error}',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: colors.error),
                   ),
@@ -205,7 +205,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                             padding: const EdgeInsets.all(24),
                             child: Text(
                               allOrders.isEmpty
-                                  ? 'Aún no hay pedidos registrados en Firebase.'
+                                  ? 'Aún no hay pedidos registrados.'
                                   : 'No hay pedidos que coincidan con la búsqueda.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colors.onSurfaceVariant,

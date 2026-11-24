@@ -4,7 +4,7 @@ import 'package:proyecto_dam/data/models/order_receipt.dart';
 /// Contrato para guardar y leer pedidos. La app usa [FirestoreOrderStore];
 /// las pruebas pueden entregar una implementación en memoria.
 abstract class OrderStore {
-  /// Guarda (o reemplaza) el pedido completo.
+  /// Guarda el pedido si aún no existe en el almacén remoto.
   Future<void> save(OrderReceipt order);
 
   /// Obtiene los pedidos con esos números. Los que no existan se omiten.
@@ -30,8 +30,13 @@ class FirestoreOrderStore implements OrderStore {
       (firestore ?? FirebaseFirestore.instance).collection(collectionName);
 
   @override
-  Future<void> save(OrderReceipt order) =>
-      _orders.doc(order.orderNumber).set(order.toMap());
+  Future<void> save(OrderReceipt order) async {
+    final doc = _orders.doc(order.orderNumber);
+    final snapshot = await doc.get();
+    if (!snapshot.exists) {
+      await doc.set(order.toMap());
+    }
+  }
 
   @override
   Future<List<OrderReceipt>> fetchByNumbers(List<String> orderNumbers) async {

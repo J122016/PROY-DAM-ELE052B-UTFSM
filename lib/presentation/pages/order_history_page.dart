@@ -39,7 +39,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   void initState() {
     super.initState();
     if (!widget.orderHistoryProvider.isEmpty) {
-      widget.orderHistoryProvider.refresh();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.orderHistoryProvider.refresh();
+        }
+      });
     }
   }
 
@@ -112,7 +116,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
               ),
             ),
             IconButton(
-              tooltip: 'Sincronizar estado con Firebase',
+              tooltip: 'Actualizar estado de pedidos',
               onPressed: provider.isRefreshing ? null : provider.refresh,
               icon: provider.isRefreshing
                   ? const SizedBox.square(
@@ -346,7 +350,7 @@ class _OrderHistoryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   if (!isSynced)
                     Tooltip(
-                      message: 'Pendiente de sincronizar con Firebase',
+                      message: 'Pendiente de sincronizar con la nube',
                       child: Icon(
                         Icons.cloud_off_outlined,
                         size: 16,

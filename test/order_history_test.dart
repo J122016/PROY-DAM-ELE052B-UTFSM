@@ -1,17 +1,27 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:proyecto_dam/data/models/cart_item.dart';
 import 'package:proyecto_dam/data/models/order_receipt.dart';
 import 'package:proyecto_dam/data/models/product.dart';
+import 'package:proyecto_dam/data/repositories/cart_repository.dart';
 import 'package:proyecto_dam/data/repositories/order_history_repository.dart';
+import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 import 'package:proyecto_dam/data/services/order_service.dart';
 import 'package:proyecto_dam/presentation/pages/admin_orders_page.dart';
+import 'package:proyecto_dam/presentation/pages/home.dart';
 import 'package:proyecto_dam/presentation/pages/order_history_page.dart';
+import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
 import 'package:proyecto_dam/presentation/providers/order_history_provider.dart';
+import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/in_memory_product_store.dart';
 
 class _FakeOrderStore implements OrderStore {
   final Map<String, OrderReceipt> _orders = {};
@@ -27,7 +37,7 @@ class _FakeOrderStore implements OrderStore {
   @override
   Future<void> save(OrderReceipt order) async {
     if (shouldFail) throw StateError('Simulated network error');
-    _orders[order.orderNumber] = order;
+    _orders.putIfAbsent(order.orderNumber, () => order);
     _emit();
   }
 
@@ -118,6 +128,61 @@ void main() {
     provider.dispose();
     store.dispose();
   });
+
+  testWidgets(
+    'opening Mis Pedidos from Home with an active order does not throw during build',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final store = _FakeOrderStore();
+      final orderHistoryProvider = OrderHistoryProvider(
+        repository: OrderHistoryRepository(preferences),
+        store: store,
+      );
+      final service = OpenFoodFactsService(
+        client: MockClient(
+          (_) async => http.Response(jsonEncode({'products': []}), 200),
+        ),
+      );
+      final productProvider = ProductProvider(
+        store: InMemoryProductStore(),
+        service: service,
+      );
+      final cartProvider = CartProvider(CartRepository(preferences));
+      final themeProvider = ThemeProvider(preferences);
+
+      await orderHistoryProvider.placeOrder(_sampleOrder(number: 'NM-999111'));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Home(
+            productProvider: productProvider,
+            themeProvider: themeProvider,
+            cartProvider: cartProvider,
+            orderHistoryProvider: orderHistoryProvider,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Badge '1' is rendered by Home's ListenableBuilder; tapping 'Mis Pedidos'
+      // pushes OrderHistoryPage while Home is still listening to orderHistoryProvider.
+      expect(find.byTooltip('Mis Pedidos'), findsOneWidget);
+      await tester.tap(find.byTooltip('Mis Pedidos'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Mis Pedidos'), findsOneWidget);
+      expect(find.text('N° NM-999111'), findsOneWidget);
+
+      service.close();
+      productProvider.dispose();
+      cartProvider.dispose();
+      orderHistoryProvider.dispose();
+      themeProvider.dispose();
+      store.dispose();
+    },
+  );
 
   testWidgets('buyer order history page lists orders and opens QR receipt', (
     tester,
