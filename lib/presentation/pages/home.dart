@@ -282,7 +282,7 @@ class _HomeState extends State<Home> {
                     ? EmptyResults(
                         isFiltered: products.isNotEmpty,
                         object: 'catálogo',
-                        onRetry: provider.refreshCatalog,
+                        onRetry: provider.initialize,
                       )
                     : GridView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

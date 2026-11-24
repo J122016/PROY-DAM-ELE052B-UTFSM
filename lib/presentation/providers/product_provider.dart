@@ -1,51 +1,57 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:proyecto_dam/data/models/product.dart';
 import 'package:proyecto_dam/data/repositories/local_catalog.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
+import 'package:proyecto_dam/data/services/product_service.dart';
 
 class ProductProvider extends ChangeNotifier {
-  ProductProvider({required this._repository, required this._service});
+  ProductProvider({required this._store, required this._service});
 
-  final ProductRepository _repository;
+  final ProductStore _store;
   final OpenFoodFactsService _service;
+  StreamSubscription<List<Product>>? _subscription;
   List<Product> _products = [];
-  Set<String> _deletedIds = {};
   bool isLoading = true;
   bool isRefreshing = false;
-  bool isLocalCatalog = false;
   bool isBackupCatalog = false;
   String? errorMessage;
 
   List<Product> get products => List.unmodifiable(_products);
 
-  Future<void> initialize() async {
-    try {
-      final snapshot = _repository.load();
-      if (snapshot != null) {
-        _products = snapshot.products;
-        _deletedIds = snapshot.deletedIds;
-        isLocalCatalog = true;
-        return;
-      }
-      _products = await _service.fetchOrganicProducts();
-      await _repository.save(_products, _deletedIds);
-      isLocalCatalog = false;
-    } catch (error) {
-      errorMessage = error.toString();
-      // Sin catálogo guardado y sin API se muestra el de respaldo, sin guardarlo,
-      // para que la próxima apertura vuelva a consultar Open Food Facts.
-      if (_products.isEmpty) {
-        _products = List.of(localCatalog);
-        isLocalCatalog = true;
-        isBackupCatalog = true;
-      }
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+  /// Escucha el catálogo de Firestore. Cada cambio del admin o compra llega solo.
+  /// El Future termina con la primera carga.
+  Future<void> initialize() {
+    final firstLoad = Completer<void>();
+    _subscription?.cancel();
+    isLoading = true;
+    errorMessage = null;
+    _subscription = _store.watchActive().listen(
+      (products) {
+        _products = products;
+        isBackupCatalog = false;
+        isLoading = false;
+        notifyListeners();
+        if (!firstLoad.isCompleted) firstLoad.complete();
+      },
+      onError: (Object error) {
+        errorMessage = 'No se pudo cargar el catálogo de la tienda: $error';
+        // Sin conexión y sin nada cargado se muestra el catálogo de respaldo.
+        if (_products.isEmpty) {
+          _products = List.of(localCatalog);
+          isBackupCatalog = true;
+        }
+        isLoading = false;
+        notifyListeners();
+        if (!firstLoad.isCompleted) firstLoad.complete();
+      },
+    );
+    return firstLoad.future;
   }
 
+  /// Importa a la tienda los productos orgánicos nuevos de Open Food Facts.
+  /// No trae de vuelta los que el admin eliminó.
   Future<void> refreshCatalog() async {
     if (isRefreshing) return;
     isRefreshing = true;
@@ -53,18 +59,18 @@ class ProductProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final remoteProducts = await _service.fetchOrganicProducts();
-      final merged = [..._products];
+      final knownIds = await _store.knownIds();
+      final names = _products
+          .map((product) => _normalize(product.name))
+          .toSet();
+      final newProducts = <Product>[];
       for (final remote in remoteProducts) {
-        final duplicate = merged.any(
-          (product) =>
-              product.id == remote.id ||
-              _normalize(product.name) == _normalize(remote.name),
-        );
-        if (!duplicate && !_deletedIds.contains(remote.id)) merged.add(remote);
+        final name = _normalize(remote.name);
+        if (knownIds.contains(remote.id) || names.contains(name)) continue;
+        names.add(name);
+        newProducts.add(remote);
       }
-      await _repository.save(merged, _deletedIds);
-      _products = merged;
-      isLocalCatalog = true;
+      if (newProducts.isNotEmpty) await _store.saveAll(newProducts);
     } catch (error) {
       errorMessage = error.toString();
     } finally {
@@ -78,19 +84,10 @@ class ProductProvider extends ChangeNotifier {
 
   Future<void> setStock(String id, int stock) async {
     if (stock < 0) throw ArgumentError.value(stock, 'stock');
-    final updated = _products
-        .map(
-          (product) =>
-              product.id == id ? _copy(product, stock: stock) : product,
-        )
-        .toList();
-    await _repository.save(updated, _deletedIds);
-    _products = updated;
-    isLocalCatalog = true;
-    notifyListeners();
+    await _store.updateDetails(id, stock: stock);
   }
 
-  Future<void> updateLocalDetails(
+  Future<void> updateDetails(
     String id, {
     required int priceClp,
     required int stock,
@@ -98,17 +95,7 @@ class ProductProvider extends ChangeNotifier {
     if (priceClp < 0 || stock < 0) {
       throw ArgumentError('Price and stock must be non-negative.');
     }
-    final updated = _products
-        .map(
-          (product) => product.id == id
-              ? product.copyWith(priceClp: priceClp, stock: stock)
-              : product,
-        )
-        .toList();
-    await _repository.save(updated, _deletedIds);
-    _products = updated;
-    isLocalCatalog = true;
-    notifyListeners();
+    await _store.updateDetails(id, priceClp: priceClp, stock: stock);
   }
 
   Future<void> addProduct(Product product) async {
@@ -118,27 +105,29 @@ class ProductProvider extends ChangeNotifier {
           _normalize(existing.name) == _normalize(product.name),
     );
     if (isDuplicate) throw StateError('Este producto ya está en el catálogo.');
-    final updated = [..._products, product];
-    final deleted = {..._deletedIds}..remove(product.id);
-    await _repository.save(updated, deleted);
-    _products = updated;
-    _deletedIds = deleted;
-    isLocalCatalog = true;
-    notifyListeners();
+    await _store.saveAll([product]);
   }
 
-  Future<void> deleteProduct(String id) async {
-    final updated = _products.where((product) => product.id != id).toList();
-    final deleted = {..._deletedIds, id};
-    await _repository.save(updated, deleted);
-    _products = updated;
-    _deletedIds = deleted;
-    isLocalCatalog = true;
-    notifyListeners();
+  Future<void> deleteProduct(String id) => _store.deactivate(id);
+
+  /// Descuenta del stock de la tienda lo comprado. Los productos que no están
+  /// en el catálogo (por ejemplo los de demostración) se ignoran.
+  Future<void> reserveStock(Map<String, int> quantities) async {
+    final catalogIds = _products.map((product) => product.id).toSet();
+    final inCatalog = {
+      for (final entry in quantities.entries)
+        if (catalogIds.contains(entry.key) && entry.value > 0)
+          entry.key: entry.value,
+    };
+    if (inCatalog.isEmpty) return;
+    await _store.decrementStock(inCatalog);
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 
   static String _normalize(String value) => value.trim().toLowerCase();
-
-  static Product _copy(Product product, {required int stock}) =>
-      product.copyWith(stock: stock);
 }
