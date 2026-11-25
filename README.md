@@ -9,6 +9,7 @@ Mockup: https://usmarketrganico.ai.studio/
 - Flutter
 - Dart
 - Idealmente emulador android
+- Proyecto en firebase configurado para autenticación y firestore
 
 ## Cómo inicializar el proyecto
 
@@ -60,7 +61,18 @@ flutter build apk --split-per-abi # generar apk
 
 ## Notas API
 
-- La primera carga consulta productos orgánicos de Open Food Facts, pero, el catálogo, el stock y el tema se guardan localmente ya que API no los provee.
+- Open Food Facts solo se usa para importar productos desde el panel de administrador. El catálogo, los precios y el stock viven en Firestore; la canasta y el tema se guardan en el teléfono.
+
+## Firebase
+
+- Catálogo en la colección `products` (un documento por código de barras, con `active` para los eliminados). Comprar descuenta el stock con una transacción.
+- Las reglas de seguridad están en [firestore.rules](firestore.rules) y se publican desde la consola (Firestore Database > Reglas): cualquiera lee el catálogo, solo un administrador con sesión lo modifica y un cliente solo puede bajar el stock al comprar.
+- Android usa `android/app/google-services.json`. Para probar en navegador hay una app web registrada en el proyecto; sus claves se pasan al compilar:
+
+```sh
+flutter create . --platforms web   # solo la primera vez, no se sube al repo
+flutter run -d chrome --dart-define=FIREBASE_WEB_API_KEY=... --dart-define=FIREBASE_WEB_APP_ID=...
+```
 
 ## Integrantes
 

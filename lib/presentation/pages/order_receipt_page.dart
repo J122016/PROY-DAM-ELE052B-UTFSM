@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:proyecto_dam/constants.dart';
 import 'package:proyecto_dam/data/models/order_receipt.dart';
 import 'package:proyecto_dam/presentation/components/qr_code_box.dart';
 import 'package:proyecto_dam/presentation/components/theme_toggle_button.dart';
@@ -10,11 +11,15 @@ class OrderReceiptPage extends StatelessWidget {
   const OrderReceiptPage({
     required this.receipt,
     required this.themeProvider,
+    this.isSynced = true,
+    this.fromHistory = false,
     super.key,
   });
 
   final OrderReceipt receipt;
   final ThemeProvider themeProvider;
+  final bool isSynced;
+  final bool fromHistory;
 
   String _formatTimestamp(DateTime dt) {
     final day = dt.day.toString().padLeft(2, '0');
@@ -39,6 +44,7 @@ class OrderReceiptPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final isDelivered = receipt.isDelivered;
 
     return Scaffold(
       appBar: AppBar(
@@ -57,6 +63,29 @@ class OrderReceiptPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
           children: [
+            if (!isSynced) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: kAccentColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: kAccentColor),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud_off_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Pedido guardado en este teléfono. Se sincronizará con la nube cuando vuelva la conexión.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Card(
               margin: EdgeInsets.zero,
               child: Padding(
@@ -74,14 +103,16 @@ class OrderReceiptPage extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.check_circle_outline,
+                        isDelivered
+                            ? Icons.verified_outlined
+                            : Icons.check_circle_outline,
                         size: 30,
                         color: colors.primary,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '¡COMPRA EXITOSA!',
+                      isDelivered ? 'PEDIDO ENTREGADO' : '¡COMPRA EXITOSA!',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: colors.primary,
                         fontWeight: FontWeight.w800,
@@ -103,7 +134,27 @@ class OrderReceiptPage extends StatelessWidget {
                         color: colors.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDelivered
+                            ? colors.primary.withValues(alpha: 0.16)
+                            : kAccentColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        receipt.status.label,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: isDelivered ? colors.primary : kAccentColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -215,7 +266,9 @@ class OrderReceiptPage extends StatelessWidget {
                                   color: colors.primary.withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: colors.primary.withValues(alpha: 0.4),
+                                    color: colors.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
                                   ),
                                 ),
                                 child: Text(
@@ -276,6 +329,46 @@ class OrderReceiptPage extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (receipt.items.isNotEmpty) ...[
+                      const Divider(height: 24),
+                      Text(
+                        'Alimentos incluidos (${receipt.totalUnits} un.)',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      for (final item in receipt.items)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${item.quantity}x ',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  item.product.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                formatClp(item.subtotalClp),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -328,12 +421,23 @@ class OrderReceiptPage extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: FilledButton.icon(
-                onPressed: () =>
-                    Navigator.of(context).popUntil((route) => route.isFirst),
-                icon: const Icon(Icons.storefront_outlined),
-                label: const Text(
-                  'Hacer Nuevo Pedido →',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                onPressed: () {
+                  if (fromHistory) {
+                    Navigator.of(context).pop();
+                  } else {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
+                icon: Icon(
+                  fromHistory
+                      ? Icons.arrow_back
+                      : Icons.storefront_outlined,
+                ),
+                label: Text(
+                  fromHistory
+                      ? 'Volver a Mis Pedidos'
+                      : 'Hacer Nuevo Pedido →',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
             ),

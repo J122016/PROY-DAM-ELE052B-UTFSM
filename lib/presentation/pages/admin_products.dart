@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:proyecto_dam/data/models/product.dart';
+import 'package:proyecto_dam/data/services/auth_service.dart';
+import 'package:proyecto_dam/data/services/order_service.dart';
 import 'package:proyecto_dam/presentation/pages/add_product.dart';
+import 'package:proyecto_dam/presentation/pages/admin_orders_page.dart';
 import 'package:proyecto_dam/presentation/components/empty_results.dart';
 import 'package:proyecto_dam/presentation/components/product_details_dialog.dart';
 import 'package:proyecto_dam/presentation/components/product_card_admin.dart';
+import 'package:proyecto_dam/presentation/components/product_filters_sheet.dart';
 import 'package:proyecto_dam/presentation/components/theme_toggle_button.dart';
+import 'package:proyecto_dam/presentation/providers/product_filter.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 
@@ -12,11 +17,13 @@ class AdminProductsPage extends StatefulWidget {
   const AdminProductsPage({
     required this.productProvider,
     required this.themeProvider,
+    this.orderStore,
     super.key,
   });
 
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
+  final OrderStore? orderStore;
 
   @override
   State<AdminProductsPage> createState() => _AdminProductsPageState();
@@ -24,7 +31,7 @@ class AdminProductsPage extends StatefulWidget {
 
 class _AdminProductsPageState extends State<AdminProductsPage> {
   final _searchController = TextEditingController();
-  String _query = '';
+  ProductFilter _filter = const ProductFilter();
 
   @override
   void dispose() {
@@ -66,6 +73,29 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     }
   }
 
+  Future<void> _signOut() async {
+    try {
+      await const AuthService().signOut();
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      _showMessage('No se pudo cerrar sesión: $error');
+    }
+  }
+
+  Future<void> _openFilters(
+    BuildContext context,
+    List<Product> products,
+  ) async {
+    final selected = await showProductFiltersSheet(
+      context,
+      initial: _filter,
+      categories: ProductFilter.categoriesOf(products),
+      showCriticalStock: true,
+      countFor: (filter) => filter.apply(products).length,
+    );
+    if (selected != null) setState(() => _filter = selected);
+  }
+
   // Modal to edit stock and price of product
   Future<void> _edit(Product product) async {
     final values = await showDialog<(int, int)>(
@@ -81,7 +111,7 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
     );
     if (values == null) return;
     try {
-      await widget.productProvider.updateLocalDetails(
+      await widget.productProvider.updateDetails(
         product.id,
         priceClp: values.$1,
         stock: values.$2,
@@ -107,6 +137,19 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
             onPressed: widget.themeProvider.toggle,
           ),
         ),
+        IconButton(
+          tooltip: 'Pedidos del campus',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute<void>(
+              builder: (context) => AdminOrdersPage(
+                orderStore: widget.orderStore ?? FirestoreOrderStore(),
+                themeProvider: widget.themeProvider,
+              ),
+            ),
+          ),
+          icon: const Icon(Icons.receipt_long_outlined),
+        ),
         ListenableBuilder(
           listenable: widget.productProvider,
           builder: (context, child) => IconButton(
@@ -123,15 +166,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
           ),
         ),
         IconButton(
-          tooltip: 'Agregar producto',
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (context) =>
-                  AddProductPage(productProvider: widget.productProvider),
-            ),
-          ),
-          icon: const Icon(Icons.add),
+          tooltip: 'Cerrar sesión',
+          onPressed: _signOut,
+          icon: const Icon(Icons.logout),
         ),
       ],
     ),
@@ -144,40 +181,10 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final query = _query.trim().toLowerCase();
-          final products = provider.products.where((product) {
-            return query.isEmpty ||
-                product.name.toLowerCase().contains(query) ||
-                (product.brand?.toLowerCase().contains(query) ?? false);
-          }).toList();
+          final products = _filter.apply(provider.products);
 
           return Column(
             children: [
-              Container(
-                width: double.infinity,
-                color: Theme.of(context).colorScheme.secondary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSecondary,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      'Panel Admin: Modificación de Stock',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onSecondary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: Row(
@@ -222,23 +229,45 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) => setState(() => _query = value),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Buscar por nombre o marca',
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Limpiar búsqueda',
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) => setState(
+                          () => _filter = _filter.copyWith(query: value),
+                        ),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search),
+                          hintText: 'Buscar por nombre o marca',
+                          suffixIcon: _filter.query.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Limpiar búsqueda',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(
+                                      () =>
+                                          _filter = _filter.copyWith(query: ''),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Badge(
+                      isLabelVisible: _filter.activeCount > 0,
+                      label: Text('${_filter.activeCount}'),
+                      child: IconButton.filledTonal(
+                        tooltip: 'Filtros',
+                        onPressed: () =>
+                            _openFilters(context, provider.products),
+                        icon: const Icon(Icons.tune),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (provider.errorMessage != null)
@@ -260,7 +289,9 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    provider.isLocalCatalog ? 'Catálogo local' : 'Datos iniciales de Open Food Facts · valores comerciales por configurar',
+                    provider.isBackupCatalog
+                        ? 'Sin conexión con base de datos: catálogo de respaldo, los cambios no se guardan'
+                        : 'Catálogo de la tienda compartido con todos los clientes',
                   ),
                 ),
               ),
@@ -284,7 +315,7 @@ class _AdminProductsPageState extends State<AdminProductsPage> {
               Expanded(
                 child: products.isEmpty
                     ? EmptyResults(
-                        isFiltered: query.isNotEmpty,
+                        isFiltered: _filter.activeCount > 0,
                         onRetry: provider.refreshCatalog,
                         object: 'catálogo',
                       )

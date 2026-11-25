@@ -8,23 +8,33 @@ Future<ProductFilter?> showProductFiltersSheet(
   BuildContext context, {
   required ProductFilter initial,
   required int Function(ProductFilter filter) countFor,
+  List<String> categories = const [],
+  bool showCriticalStock = false,
 }) => showModalBottomSheet<ProductFilter>(
   context: context,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (context) =>
-      ProductFiltersSheet(initial: initial, countFor: countFor),
+  builder: (context) => ProductFiltersSheet(
+    initial: initial,
+    countFor: countFor,
+    categories: categories,
+    showCriticalStock: showCriticalStock,
+  ),
 );
 
 class ProductFiltersSheet extends StatefulWidget {
   const ProductFiltersSheet({
     required this.initial,
     required this.countFor,
+    this.categories = const [],
+    this.showCriticalStock = false,
     super.key,
   });
 
   final ProductFilter initial;
   final int Function(ProductFilter filter) countFor;
+  final List<String> categories;
+  final bool showCriticalStock;
 
   @override
   State<ProductFiltersSheet> createState() => _ProductFiltersSheetState();
@@ -73,6 +83,46 @@ class _ProductFiltersSheetState extends State<ProductFiltersSheet> {
               shrinkWrap: true,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
+                Text('STOCK', style: sectionStyle),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final stock in ProductStockFilter.values)
+                      if (widget.showCriticalStock ||
+                          stock != ProductStockFilter.critical)
+                        ChoiceChip(
+                          label: Text(stock.label),
+                          selected: _filter.stock == stock,
+                          onSelected: (_) => setState(
+                            () => _filter = _filter.copyWith(stock: stock),
+                          ),
+                        ),
+                  ],
+                ),
+                if (widget.categories.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text('CATEGORÍA', style: sectionStyle),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final category in [null, ...widget.categories])
+                        ChoiceChip(
+                          label: Text(category ?? 'Todas'),
+                          selected: _filter.category == category,
+                          onSelected: (_) => setState(
+                            () => _filter = _filter.copyWith(
+                              category: () => category,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
                 Text('ORDENAR POR', style: sectionStyle),
                 const SizedBox(height: 8),
                 Wrap(
@@ -135,9 +185,8 @@ class _ProductFiltersSheetState extends State<ProductFiltersSheet> {
                   ),
                   value: _filter.withoutHighNutrients,
                   onChanged: (value) => setState(
-                    () => _filter = _filter.copyWith(
-                      withoutHighNutrients: value,
-                    ),
+                    () =>
+                        _filter = _filter.copyWith(withoutHighNutrients: value),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -156,9 +205,8 @@ class _ProductFiltersSheetState extends State<ProductFiltersSheet> {
                         ),
                         selected: _filter.maxPrice == price,
                         onSelected: (_) => setState(
-                          () => _filter = _filter.copyWith(
-                            maxPrice: () => price,
-                          ),
+                          () =>
+                              _filter = _filter.copyWith(maxPrice: () => price),
                         ),
                       ),
                   ],

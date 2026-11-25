@@ -3,10 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:proyecto_dam/data/models/order_receipt.dart';
+import 'package:proyecto_dam/data/services/product_service.dart';
 import 'package:proyecto_dam/presentation/components/nutrition_summary_card.dart';
 import 'package:proyecto_dam/presentation/components/theme_toggle_button.dart';
 import 'package:proyecto_dam/presentation/pages/order_receipt_page.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
+import 'package:proyecto_dam/presentation/providers/order_history_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 
@@ -15,12 +17,17 @@ class CheckoutPage extends StatefulWidget {
     required this.cartProvider,
     required this.productProvider,
     required this.themeProvider,
+    this.orderHistoryProvider,
     super.key,
   });
 
   final CartProvider cartProvider;
   final ProductProvider productProvider;
   final ThemeProvider themeProvider;
+
+  /// Si se entrega, el pedido confirmado se guarda en el historial
+  /// (teléfono + Firebase).
+  final OrderHistoryProvider? orderHistoryProvider;
 
   @override
   State<CheckoutPage> createState() => _CheckoutPageState();
@@ -74,21 +81,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final totalProteins = widget.cartProvider.totalProteins;
       final totalCarbohydrates = widget.cartProvider.totalCarbohydrates;
 
-      // Descontar stock en catálogo local si el producto existe allí
-      for (final item in items) {
-        final catalogMatch = widget.productProvider.products
-            .where((p) => p.id == item.product.id)
-            .toList();
-        if (catalogMatch.isNotEmpty) {
-          final currentStock = catalogMatch.first.stock;
-          final nextStock = max(0, currentStock - item.quantity);
-          await widget.productProvider.setStock(item.product.id, nextStock);
-        }
+      // Descuenta el stock de la tienda en Firestore. Si otro cliente compró
+      // las últimas unidades, el pedido no se confirma.
+      try {
+        await widget.productProvider.reserveStock({
+          for (final item in items) item.product.id: item.quantity,
+        });
+      } on OutOfStockException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$error Ajusta tu canasta para continuar.')),
+        );
+        return;
       }
 
-      final randomSuffix = 100000 + Random().nextInt(900000);
       final receipt = OrderReceipt(
-        orderNumber: 'NM-$randomSuffix',
+        orderNumber: _newOrderNumber(),
         buyerName: _nameController.text.trim(),
         universityRol: _rolController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -106,6 +114,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
         items: items,
       );
 
+      var synced = true;
+      final history = widget.orderHistoryProvider;
+      if (history != null) {
+        try {
+          synced = await history.placeOrder(receipt);
+        } catch (_) {
+          // Si falla incluso el guardado local, el comprador igual
+          // recibe su comprobante en pantalla.
+          synced = false;
+        }
+      }
+
       await widget.cartProvider.clear();
       if (!mounted) return;
 
@@ -115,12 +135,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
           builder: (context) => OrderReceiptPage(
             receipt: receipt,
             themeProvider: widget.themeProvider,
+            isSynced: history == null || synced,
           ),
         ),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  /// N° de pedido legible y prácticamente único: los pedidos de todos los
+  /// teléfonos comparten la misma colección en Firebase, así que un número
+  /// repetido sobrescribiría el pedido de otra persona.
+  static String _newOrderNumber() {
+    final time = DateTime.now().millisecondsSinceEpoch
+        .toRadixString(36)
+        .toUpperCase();
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final random = Random.secure();
+    final suffix = List.generate(
+      3,
+      (_) => alphabet[random.nextInt(alphabet.length)],
+    ).join();
+    return 'NM-$time$suffix';
   }
 
   @override

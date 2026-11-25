@@ -54,7 +54,13 @@ class Product {
   final double? servingGrams;
 
   static const nutrientKeys = ['fat', 'saturated-fat', 'sugars', 'salt'];
-  static const labelKeys = ['vegan', 'vegetarian', 'gluten-free', 'palm-oil-free'];
+  static const labelKeys = [
+    'vegan',
+    'vegetarian',
+    'gluten-free',
+    'palm-oil-free',
+  ];
+  static const criticalStockThreshold = 5;
 
   static const _pnnsCategories = {
     'Cereals and potatoes': 'Cereales y granos',
@@ -95,6 +101,8 @@ class Product {
 
   bool get isAvailable => priceClp > 0 && stock > 0;
 
+  bool get isCriticallyStocked => stock > 0 && stock <= criticalStockThreshold;
+
   bool get hasHighNutrient => levels.values.contains('high');
 
   double? nutrientValue(String key) => switch (key) {
@@ -108,8 +116,10 @@ class Product {
   /// Niveles bajo/medio/alto. Usa los de la API y, si no vienen, los calcula.
   Map<String, String> get levels {
     if (nutrientLevels.isNotEmpty) return nutrientLevels;
-    final isLiquid = RegExp(r'\d\s*(ml|cl|l)\b', caseSensitive: false)
-        .hasMatch(quantity ?? '');
+    final isLiquid = RegExp(
+      r'\d\s*(ml|cl|l)\b',
+      caseSensitive: false,
+    ).hasMatch(quantity ?? '');
     final factor = isLiquid ? 0.5 : 1.0;
     final computed = <String, String>{};
     for (final key in nutrientKeys) {
@@ -314,7 +324,9 @@ class Product {
     if (tags.any((tag) => tag.contains('spices') || tag.contains('herbs'))) {
       return 'Especias';
     }
-    if (tags.any((tag) => tag.contains('supplement') || tag.contains('seeds'))) {
+    if (tags.any(
+      (tag) => tag.contains('supplement') || tag.contains('seeds'),
+    )) {
       return 'Superalimentos';
     }
     if (tags.any((tag) => tag == 'beverages' || tag.contains('teas'))) {

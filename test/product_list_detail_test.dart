@@ -7,15 +7,17 @@ import 'package:http/testing.dart';
 import 'package:proyecto_dam/data/models/product.dart';
 import 'package:proyecto_dam/data/repositories/cart_repository.dart';
 import 'package:proyecto_dam/data/repositories/local_catalog.dart';
-import 'package:proyecto_dam/data/repositories/product_repository.dart';
 import 'package:proyecto_dam/data/services/open_food_facts_service.dart';
 import 'package:proyecto_dam/presentation/pages/home.dart';
 import 'package:proyecto_dam/presentation/pages/product_detail_page.dart';
+import 'package:proyecto_dam/presentation/components/product_filters_sheet.dart';
 import 'package:proyecto_dam/presentation/providers/cart_provider.dart';
 import 'package:proyecto_dam/presentation/providers/product_filter.dart';
 import 'package:proyecto_dam/presentation/providers/product_provider.dart';
 import 'package:proyecto_dam/presentation/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/in_memory_product_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +41,12 @@ void main() {
     expect(product.category, 'Aceites y untables');
     expect(product.nutriScore, 'b');
     expect(product.novaGroup, 3);
-    expect(product.labels, ['vegan', 'vegetarian', 'gluten-free', 'palm-oil-free']);
+    expect(product.labels, [
+      'vegan',
+      'vegetarian',
+      'gluten-free',
+      'palm-oil-free',
+    ]);
     expect(product.allergens, ['Sésamo']);
     expect(product.servingGrams, 30);
     expect(product.hasHighNutrient, isTrue);
@@ -77,12 +84,91 @@ void main() {
     expect(ProductFilter.categoriesOf(localCatalog), contains('Bebidas'));
   });
 
+  test(
+    'stock filter separates unavailable, available and critical products',
+    () {
+      final products = [
+        const Product(id: 'zero', name: 'Zero', priceClp: 500, stock: 0),
+        const Product(id: 'low', name: 'Low', priceClp: 500, stock: 5),
+        const Product(id: 'high', name: 'High', priceClp: 500, stock: 6),
+      ];
+
+      expect(
+        const ProductFilter(stock: ProductStockFilter.outOfStock)
+            .apply(products)
+            .map((product) => product.id),
+        ['zero'],
+      );
+      expect(
+        const ProductFilter(stock: ProductStockFilter.available)
+            .apply(products)
+            .map((product) => product.id),
+        ['low', 'high'],
+      );
+      expect(
+        const ProductFilter(stock: ProductStockFilter.critical)
+            .apply(products)
+            .map((product) => product.id),
+        ['low'],
+      );
+    },
+  );
+
+  testWidgets('admin filter sheet exposes and applies critical stock', (
+    tester,
+  ) async {
+    ProductFilter? selected;
+    final products = [
+      const Product(id: 'critical', name: 'Critical', priceClp: 500, stock: 2),
+      const Product(
+        id: 'available',
+        name: 'Available',
+        priceClp: 500,
+        stock: 8,
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                selected = await showProductFiltersSheet(
+                  context,
+                  initial: const ProductFilter(),
+                  categories: const ['Alimentos'],
+                  showCriticalStock: true,
+                  countFor: (filter) => filter.apply(products).length,
+                );
+              },
+              child: const Text('Open filters'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open filters'));
+    await tester.pumpAndSettle();
+    expect(find.text('Crítico'), findsOneWidget);
+    expect(find.text('Alimentos'), findsOneWidget);
+    await tester.tap(find.text('Crítico'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ver 1 producto'));
+    await tester.pumpAndSettle();
+
+    expect(selected?.stock, ProductStockFilter.critical);
+    expect(selected?.apply(products).map((product) => product.id), [
+      'critical',
+    ]);
+  });
+
   testWidgets('product list adds, increments and removes items from the cart', (
     tester,
   ) async {
     final setup = await _setup(tester);
 
-    expect(find.text('Quinoa Real Orgánica de los Andes'), findsOneWidget);
+    expect(find.text('Aceite de Oliva Virgen Extra Ecológico'), findsOneWidget);
     await tester.tap(find.byTooltip('Agregar a la canasta').first);
     await tester.pumpAndSettle();
     expect(setup.cart.totalItemsCount, 1);
@@ -162,7 +248,7 @@ Future<({CartProvider cart, ThemeProvider theme})> _setup(
     client: MockClient((_) async => http.Response(jsonEncode({}), 503)),
   );
   final products = ProductProvider(
-    repository: ProductRepository(preferences),
+    store: InMemoryProductStore(localCatalog),
     service: service,
   );
   final cart = CartProvider(CartRepository(preferences));

@@ -30,10 +30,36 @@ class _AddProductPageState extends State<AddProductPage> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    widget.productProvider.addListener(_onCatalogChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AddProductPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.productProvider != widget.productProvider) {
+      oldWidget.productProvider.removeListener(_onCatalogChanged);
+      widget.productProvider.addListener(_onCatalogChanged);
+    }
+  }
+
+  void _onCatalogChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    widget.productProvider.removeListener(_onCatalogChanged);
     _queryController.dispose();
     super.dispose();
   }
+
+  bool _isAlreadyInStore(Product product) => widget.productProvider.products.any(
+    (existing) =>
+        existing.id == product.id ||
+        existing.name.trim().toLowerCase() == product.name.trim().toLowerCase(),
+  );
 
   Future<void> _search() async {
     if (_queryController.text.trim().isEmpty) {
@@ -209,6 +235,7 @@ class _AddProductPageState extends State<AddProductPage> {
             ...filteredProducts.map(
               (product) => _CatalogProductTile(
                 product: product,
+                alreadyInStore: _isAlreadyInStore(product),
                 onAdd: () => _add(product),
               ),
             ),
@@ -237,9 +264,14 @@ class _AddProductPageState extends State<AddProductPage> {
 }
 
 class _CatalogProductTile extends StatelessWidget {
-  const _CatalogProductTile({required this.product, required this.onAdd});
+  const _CatalogProductTile({
+    required this.product,
+    required this.alreadyInStore,
+    required this.onAdd,
+  });
 
   final Product product;
+  final bool alreadyInStore;
   final VoidCallback onAdd;
 
   @override
@@ -291,9 +323,12 @@ class _CatalogProductTile extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             FilledButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Agregar'),
+              onPressed: alreadyInStore ? null : onAdd,
+              icon: Icon(
+                alreadyInStore ? Icons.check : Icons.add,
+                size: 18,
+              ),
+              label: Text(alreadyInStore ? 'En tienda' : 'Agregar'),
             ),
           ],
         ),
